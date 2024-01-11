@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cfloat>
 #include <math.h>
 
 struct Vector3D
@@ -27,7 +28,7 @@ struct Vector3D
 		z *= s;
 		return (*this);
 	}
-
+	
 	Vector3D& operator /=(float s) {
 		s = 1.0F / s;
 		x *= s;
@@ -116,23 +117,23 @@ public:
 };
 
 Matrix3D operator*(const Matrix3D& A, const Matrix3D& B) {
-    return (Matrix3D(
-        A(0,0)*B(0,0) + A(0,1)*B(1,0) + A(0,2)*B(2,0),
-        A(0,0)*B(0,1) + A(0,1)*B(1,1) + A(0,2)*B(2,1),
-        A(0,0)*B(0,2) + A(0,1)*B(1,2) + A(0,2)*B(2,2),
-        A(1,0)*B(0,0) + A(1,1)*B(1,0) + A(1,2)*B(2,0),
-        A(1,0)*B(0,1) + A(1,1)*B(1,1) + A(1,2)*B(2,1),
-        A(1,0)*B(0,2) + A(1,1)*B(1,2) + A(1,2)*B(2,2),
-        A(2,0)*B(0,0) + A(2,1)*B(1,0) + A(2,2)*B(2,0),
-        A(2,0)*B(0,1) + A(2,1)*B(1,1) + A(2,2)*B(2,1),
-        A(2,0)*B(0,2) + A(2,1)*B(1,2) + A(2,2)*B(2,2)));
+	return (Matrix3D(
+			A(0,0)*B(0,0) + A(0,1)*B(1,0) + A(0,2)*B(2,0),
+			A(0,0)*B(0,1) + A(0,1)*B(1,1) + A(0,2)*B(2,1),
+			A(0,0)*B(0,2) + A(0,1)*B(1,2) + A(0,2)*B(2,2),
+			A(1,0)*B(0,0) + A(1,1)*B(1,0) + A(1,2)*B(2,0),
+			A(1,0)*B(0,1) + A(1,1)*B(1,1) + A(1,2)*B(2,1),
+			A(1,0)*B(0,2) + A(1,1)*B(1,2) + A(1,2)*B(2,2),
+			A(2,0)*B(0,0) + A(2,1)*B(1,0) + A(2,2)*B(2,0),
+			A(2,0)*B(0,1) + A(2,1)*B(1,1) + A(2,2)*B(2,1),
+			A(2,0)*B(0,2) + A(2,1)*B(1,2) + A(2,2)*B(2,2)));
 }
 
 Vector3D operator*(const Matrix3D& M, const Vector3D& v) {
-    return (Vector3D(
-        M(0,0)*v.x + M(0,1)*v.y + M(0,2)*v.z,
-        M(1,0)*v.x + M(1,1)*v.y + M(1,2)*v.z,
-        M(2,0)*v.x + M(2,1)*v.y + M(2,2)*v.z));
+	return (Vector3D(
+			M(0,0)*v.x + M(0,1)*v.y + M(0,2)*v.z,
+			M(1,0)*v.x + M(1,1)*v.y + M(1,2)*v.z,
+			M(2,0)*v.x + M(2,1)*v.y + M(2,2)*v.z));
 }
 
 inline float Dot(const Vector3D& a, const Vector3D& b)
@@ -398,6 +399,88 @@ void Quaternion::SetRotationMatrix(const Matrix3D& m)
 		w = (m(1,0) - m(0,1)) * f;
 	}
 }
+
+float DistPointLine(const Point3D& q, const Point3D& p, const Vector3D& v)
+{
+	Vector3D a = Cross(q - p, v);
+	return (sqrt(Dot(a, a) / Dot(v,v)));
+}
+
+float DistLineLine(const Point3D& p1, const Vector3D& v1,
+		   const Point3D& p2, const Vector3D& v2)
+{
+	Vector3D dp = p2 - p1;
+	float v12 = Dot(v1, v1);
+	float v22 = Dot(v2, v2);
+	float v1v2 = Dot(v1, v2);
+
+	float det = v1v2 * v1v2 - v12 * v22;
+	if (fabs(det) > FLT_MIN) {
+		det = 1.0F / det;
+
+		float dpv1 = Dot(dp, v1);
+		float dpv2 = Dot(dp, v2);
+		float t1 = (v1v2 * dpv2 - v22 * dpv1) * det;
+		float t2 = (v12 * dpv2 - v1v2 * dpv1) * det;
+
+		return (Magnitude(dp + v2 * t2 - v1 * t1));
+	}
+
+	Vector3D a = Cross(dp, v1);
+	return (sqrt(Dot(a, a) / v12));
+}
+
+struct Plane
+{
+	float x, y, z, w;
+
+	Plane() = default;
+
+	Plane(float nx, float ny, float nz, float d) {
+		x = nx;
+		y = ny;
+		z = nz;
+		w = d;
+	}
+
+	Plane(const Vector3D& n, float d) {
+		x = n.x;
+		y = n.y;
+		z = n.z;
+		w = d;
+	}
+
+	const Vector3D& GetNormal(void) const {
+		return (reinterpret_cast<const Vector3D&>(x));
+	}
+
+};
+
+float Dot(const Plane& f, const Vector3D& v) {
+	return (f.x * v.x + f.y * v.y + f.z * v.z);
+}
+
+float Dot(const Plane& f, const Point3D& p) {
+	return (f.x * p.x + f.y * p.y + f.z * p.z);
+}
+
+struct Line
+{
+	Vector3D direction;
+	Vector3D moment;
+
+	Line() = default;
+
+	Line(float vx, float vy, float vz, float mx, float my, float mz) :
+		direction(vx, vy, vz), moment(mx, my, mz) {
+		}
+
+	Line(const Vector3D& v, const Vector3D& m) {
+		direction = v;
+		moment = m;
+	}
+};
+	
 int
 main()
 {
