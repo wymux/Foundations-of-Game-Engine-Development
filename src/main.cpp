@@ -481,6 +481,35 @@ struct Line
 	}
 };
 	
+inline Line operator ^(const Point3D& p, const Point3D& q)
+{
+	return (Line(q.x - p.x, q.y - p.y, q.z - p.z,
+		     p.y * q.z - p.z * q.y, p.z * q.x - p.x * q.z, p.x * q.y - p.y * q.x));
+}
+
+inline Line operator ^(const Plane& f, const Plane& g)
+{
+	return (Line(f.z * g.y - f.y * g.z,
+		     f.x * g.z - f.z * g.x,
+		     f.y * g.x - f.x * g.y,
+		     f.x * g.w - f.w * g.x,
+		     f.y * g.w - f.w * g.y,
+		     f.x * g.w - f.w * g.z));
+}
+
+inline Plane operator ^(const Line& L, const Point3D& p)
+{
+	return (Plane(L.direction.y * p.z - L.direction.z * p.y + L.moment.x,
+		      L.direction.z * p.x - L.direction.x * p.z + L.moment.y,
+		      L.direction.x * p.y - L.direction.y * p.x + L.moment.z,
+		      -L.moment.x * p.x - L.moment.y * p.y - L.moment.z * p.z));
+}
+
+inline Plane operator ^(const Point3D& p, const Line& L)
+{
+	return (L ^ p);
+}
+
 int
 main()
 {
